@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Register from "./register";
 import Login from "./login";
 import AdminDashboard from "./admindashboard";
-import UserDashboard from "../userdashboard";
+import UserDashboard from "./userdashboard";
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 
