@@ -3,10 +3,19 @@ import cors from 'cors';
 import mysql from 'mysql2/promise'; 
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import session from 'express-session';
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// Session Middleware
+app.use(session({
+    secret: "your_secret_key",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false }
+}));
 
 const db = await mysql.createConnection({
     host: "localhost",
@@ -15,19 +24,17 @@ const db = await mysql.createConnection({
     database: "logiin"
 });
 
-// ✅ Register User
+//  Register User
 app.post('/register', async (req, res) => {
     try {
-        const { name, email, password } = req.body;
-        if (!name || !email || !password) {
+        const { name, email, password, role } = req.body;
+        if (!name || !email || !password || !role) {
             return res.status(400).json({ message: "All fields are required!" });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        console.log("Hashed Password:", hashedPassword);
-
-        const query = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
-        await db.execute(query, [name, email, hashedPassword]);
+        const query = "INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)";
+        await db.execute(query, [name, email, hashedPassword, role]);
 
         return res.status(201).json({ message: "User registered successfully" });
 
@@ -37,36 +44,29 @@ app.post('/register', async (req, res) => {
     }
 });
 
+// Login User
 app.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log("Login Attempt - Email:", email, "Password:", password); 
+        console.log("Login Attempt - Email:", email);
 
-        // Run query
         const [rows] = await db.execute("SELECT * FROM users WHERE email = ?", [email]);
 
-        console.log("Query Result:", rows); 
-
-        // If no user found
         if (!rows || rows.length === 0) {
-            console.log("User Not Found in Database");
             return res.status(401).json({ message: "User not found" });
         }
 
         const user = rows[0];
-        console.log("User Found:", user);
 
-        
         const isMatch = await bcrypt.compare(password, user.password);
-        console.log("password Match:", isMatch);
-
         if (!isMatch) {
-            console.log("Password Incorrect");
             return res.status(401).json({ message: "Invalid password" });
         }
 
-        const token = jwt.sign({ id: user.id }, "secretkey", { expiresIn: "1h" });
-        res.json({ success: true, token });
+        // Store user in session
+        req.session.user = { id: user.id, role: user.role };
+
+        res.json({ success: true, role: user.role });
 
     } catch (error) {
         console.error("Login Error:", error);
@@ -74,8 +74,32 @@ app.post('/login', async (req, res) => {
     }
 });
 
+// Logout Route
+app.post('/logout', (req, res) => {
+    req.session.destroy(() => {
+        res.json({ message: "Logged out successfully" });
+    });
+});
 
-// Start Server
+// Admin Route (Only accessible to admins)
+app.get('/admin', (req, res) => {
+    if (req.session.user && req.session.user.role === "admin") {
+        res.json({ message: "Welcome Admin!" });
+    } else {
+        res.status(403).json({ message: "Access Denied" });
+    }
+});
+
+// User Dashboard (Only accessible to users)
+app.get('/user', (req, res) => {
+    if (req.session.user && req.session.user.role === "user") {
+        res.json({ message: "Welcome User!" });
+    } else {
+        res.status(403).json({ message: "Access Denied" });
+    }
+});
+
+// ✅ Start Server
 app.listen(8111, () => {
-    console.log("server running on http://localhost:8111");
+    console.log("Server running on http://localhost:8111");
 });

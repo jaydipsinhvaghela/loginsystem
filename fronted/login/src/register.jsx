@@ -1,77 +1,57 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import { Link } from 'react-router-dom';
+import React, { useState } from "react";
+import axios from "axios";
 
 export default function Register() {
-    const [name, setFullname] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [formData, setFormData] = useState({ name: "", email: "", password: "", role: "user" });
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState("");
 
-    const submitHandle = async (e) => {
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log(name,email,password)
-        try {
-            const res = await axios.post("http://localhost:8111/register", {
-                name,
-                email,
-                password,
-            });
+        setLoading(true);
+        setMessage("");
 
-            alert("Registration Successful!");
-            console.log("Server Response:", res.data);
-        } catch (err) {
-            alert(`Registration Failed: ${err.response?.data?.message || err.message}`);
-            console.error(err);
+        try {
+            const res = await axios.post("http://localhost:8111/register", formData);
+            setMessage({ type: "success", text: res.data.message });
+            setFormData({ name: "", email: "", password: "", role: "user" });
+        } catch (error) {
+            setMessage({ type: "danger", text: "Registration Failed!" });
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div className="container d-flex justify-content-center align-items-center vh-100">
-            <div className="card p-4 shadow-lg" style={{ width: '400px' }}>
-                <h2 className="text-center mb-4">Register</h2>
-                <form onSubmit={submitHandle}>
-                    <div className="mb-3">
-                        <label className="form-label">Full Name</label>
-                        <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Enter full name"
-                            required
-                            value={name}
-                            onChange={(e) => setFullname(e.target.value)}
-                        />
+        <div className="d-flex justify-content-center align-items-center vh-100">
+            <div className="card p-4 shadow-lg" style={{ width: "400px" }}>
+                <h2 className="text-center mb-3">Register</h2>
+                {message && <p className={`alert alert-${message.type} text-center`}>{message.text}</p>}
+                <form onSubmit={handleSubmit}>
+                    <div className="mb-2">
+                        <input className="form-control" type="text" name="name" placeholder="Full Name" value={formData.name} onChange={handleChange} required />
                     </div>
-                    <div className="mb-3">
-                        <label className="form-label">Email</label>
-                        <input
-                            type="email"
-                            className="form-control"
-                            placeholder="Enter email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                        />
+                    <div className="mb-2">
+                        <input className="form-control" type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} required />
                     </div>
-                    <div className="mb-3">
-                        <label className="form-label">Password</label>
-                        <input
-                            type="password"
-                            className="form-control"
-                            placeholder="Enter password"
-                            required
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
+                    <div className="mb-2">
+                        <input className="form-control" type="password" name="password" placeholder="Password" value={formData.password} onChange={handleChange} required />
                     </div>
-                    <button type="submit" className="btn btn-primary w-100">
-                        Register
+                    <div className="mb-2">
+                        <select className="form-control" name="role" value={formData.role} onChange={handleChange}>
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <button className="btn btn-primary w-100" type="submit" disabled={loading}>
+                        {loading ? "Registering..." : "Register"}
                     </button>
                 </form>
-                <p className="text-center mt-3">
-                             Already have an account? <Link to='/login'>Login</Link> </p>
-
-          
+                <p className="text-center mt-3">Already have an account? <a href="/login">Login</a></p>
             </div>
         </div>
     );
